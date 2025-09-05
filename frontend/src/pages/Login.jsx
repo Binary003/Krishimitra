@@ -8,10 +8,27 @@ const Login = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // Inside handleSubmit
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login data:", form);
-    // TODO: integrate API call (check with email OR phone on backend)
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem("token", data.token); // Save auth token
+        window.location.href = "/dashboard"; // Redirect
+      } else {
+        alert(data.message || "Invalid login credentials");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Something went wrong. Try again.");
+    }
   };
 
   return (
@@ -73,12 +90,12 @@ const Login = () => {
           </div>
 
           {/* Submit */}
-          <Link
-            to="/dashboard"
+          <button
+            type="submit"
             className="w-full py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors text-center block"
           >
             Login
-          </Link>
+          </button>
         </form>
 
         <p className="text-white text-center mt-4">

@@ -8,10 +8,32 @@ const Signup = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Signup data:", form);
-    // TODO: integrate API call (validate email/phone uniqueness on backend)
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      let data;
+      try {
+        data = await res.json(); // try parsing JSON
+      } catch {
+        data = { message: "Server error" }; // fallback if response is not JSON
+      }
+
+      if (res.ok) {
+        alert("Signup successful! Please login.");
+        window.location.href = "/"; // redirect to login
+      } else {
+        alert(data.message || "Signup failed. Try again.");
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      alert("Something went wrong. Please try later.");
+    }
   };
 
   return (

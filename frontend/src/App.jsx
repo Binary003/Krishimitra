@@ -8,6 +8,7 @@ import WeatherWidget from "./components/WeatherWidget";
 import MandiPrices from "./components/MandiPrices";
 import Services from "./pages/Services";
 import Mandiprice from "./pages/Mandiprice";
+import FarmMap from "./pages/FarmMap";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -26,6 +27,7 @@ function App() {
         <Route path="/services" element={<Services />} />
         <Route path="/Map" element={<Map />} />
         <Route path="/mandiprice" element={<Mandiprice />} />
+        <Route path="/farmmap" element={<FarmMap />} />
       </Routes>
     </Router>
   );
