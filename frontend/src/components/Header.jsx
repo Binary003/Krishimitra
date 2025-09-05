@@ -2,16 +2,55 @@ import React, { useState } from "react";
 import { Search, Bell, User, Globe, Menu, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMapContext } from "../context/MapContext";
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserPopup, setShowUserPopup] = useState(false);
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchLocation, setSearchLocation] = useState("");
+  const { setMapLocation } = useMapContext();
 
   const isActivePath = (path) => location.pathname === path;
+
+  const handleSearch = async () => {
+    if (!searchLocation.trim()) {
+      console.log("Searching for:", searchLocation);
+      alert("Please enter a location");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/proxy/location?query=${searchLocation}`
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.msg || "Location not found");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data && data.lat && data.lon) {
+        const lat = parseFloat(data.lat);
+        const lon = parseFloat(data.lon);
+
+        setMapLocation({ lat, lon });
+
+        localStorage.setItem("selectedLocation", JSON.stringify({ lat, lon }));
+
+        navigate(`/Map?lat=${lat}&lon=${lon}`);
+      } else {
+        alert("Location not found");
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      alert("Error fetching location");
+    }
+  };
 
   return (
     <>
@@ -62,7 +101,10 @@ const Header = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search location..."
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="pl-10 pr-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -90,19 +132,12 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Notifications Popup (right side under bell) */}
+        {/* Notifications Popup */}
         {showNotifications && (
-          <div
-            className="absolute right-4 top-20 w-80 
-                  bg-white/40 backdrop-blur-2xl 
-                  border border-white/20 
-                  shadow-2xl rounded-2xl 
-                  z-50 p-5"
-          >
+          <div className="absolute right-4 top-20 w-80 bg-white/40 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl z-50 p-5">
             <h3 className="text-xl font-bold text-green-700 mb-4">
               🌾 Farm Notifications
             </h3>
-
             <ul className="space-y-3 text-gray-900 text-base">
               <li className="p-3 rounded-xl bg-white/60 backdrop-blur-sm shadow-sm">
                 🌱 New crop suggestion available
@@ -114,7 +149,6 @@ const Header = () => {
                 💧 Irrigation reminder
               </li>
             </ul>
-
             <button
               onClick={() => setShowNotifications(false)}
               className="mt-5 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
@@ -128,43 +162,30 @@ const Header = () => {
       {/* Mobile Search Bar */}
       <div className="sm:hidden mt-3 px-2">
         <div className="relative flex items-center">
-          {/* Search Button with visible background */}
           <button
-            onClick={() => {
-              const input = document.getElementById("mobileSearch");
-              if (input) {
-                alert(`Searching for: ${input.value}`); // replace with your search logic
-              }
-            }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 
-                 w-8 h-8 flex items-center justify-center 
-                 bg-green-500 rounded-full shadow-md z-10"
+            onClick={handleSearch}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-green-500 rounded-full shadow-md z-10"
           >
-            <Search className="w-4 h-4 text-white" />{" "}
-            {/* ✅ Always visible now */}
+            <Search className="w-4 h-4 text-white" />
           </button>
-
-          {/* Input */}
           <input
-            id="mobileSearch"
             type="text"
             placeholder="Search farm location..."
-            className="w-full pl-12 pr-4 py-2 
-                 bg-white/20 backdrop-blur-sm border border-white/30 
-                 rounded-lg text-white placeholder-white/70 
-                 focus:outline-none focus:ring-2 focus:ring-green-500"
+            value={searchLocation}
+            onChange={(e) => setSearchLocation(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="w-full pl-12 pr-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
       </div>
 
-      {/* Profile Popup (center screen) */}
+      {/* Profile Popup */}
       {showUserPopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl shadow-2xl p-8 w-[400px] text-center">
             <h2 className="text-2xl font-bold text-green-500 mb-4">
               👤 Farmer Profile
             </h2>
-
             <div className="space-y-2 text-white/90 mb-6">
               <p>
                 <b>Name:</b> Farmer Name
@@ -176,7 +197,6 @@ const Header = () => {
                 <b>Location:</b> Punjab, India
               </p>
             </div>
-
             <div className="flex justify-center space-x-4">
               <button
                 onClick={() => setShowUserPopup(false)}
@@ -187,7 +207,6 @@ const Header = () => {
               <button
                 onClick={() => {
                   setShowUserPopup(false);
-                  // 🔑 add logout logic here
                   navigate("/");
                 }}
                 className="bg-red-600/90 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition"
@@ -199,11 +218,10 @@ const Header = () => {
         </div>
       )}
 
-      {/* Mobile Menu (Slide from Left) */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
-            {/* Background overlay */}
             <motion.div
               className="fixed inset-0 bg-black/40 z-40"
               onClick={() => setMobileMenuOpen(false)}
@@ -211,8 +229,6 @@ const Header = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             />
-
-            {/* Sliding Menu */}
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
@@ -226,7 +242,6 @@ const Header = () => {
                   <X className="w-6 h-6 text-white" />
                 </button>
               </div>
-
               <nav className="flex flex-col space-y-4">
                 {[
                   { path: "/dashboard", label: "Dashboard" },
@@ -238,7 +253,7 @@ const Header = () => {
                   <Link
                     key={path}
                     to={path}
-                    onClick={() => setMobileMenuOpen(false)} // Auto-close on click
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`px-4 py-2 rounded-lg ${
                       isActivePath(path)
                         ? "bg-green-600 text-white font-medium"

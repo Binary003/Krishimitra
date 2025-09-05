@@ -1,36 +1,48 @@
+// backend/routes/location.js
 const express = require("express");
-const fetch = require("node-fetch"); // ensure you have installed node-fetch
 const router = express.Router();
+const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-/**
- * @route   GET /api/proxy/nominatim
- * @desc    Search for locations using OpenStreetMap Nominatim API
- * @query   q => search query string
- * @return  JSON array of places
- */
-router.get("/nominatim", async (req, res) => {
-  const { q } = req.query;
+// Add CORS headers for all requests in this router
+router.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // allow all origins for dev
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
 
-  if (!q) {
-    return res.status(400).json({ msg: "Query parameter 'q' is required" });
-  }
+router.get("/location", async (req, res) => {
+  let { query } = req.query;
+  if (!query) return res.status(400).json({ msg: "Query parameter 'query' is required" });
+
+  query = query.replace(/[:]/g, "");
 
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`,
+      {
+        headers: {
+          "User-Agent": "KrishiMitraApp/1.0 vermaanuj973@gmail.com",
+          Referer: "http://localhost:5173",
+        },
+      }
     );
+
+    if (!response.ok)
+      return res.status(response.status).json({ msg: "Error fetching location from Nominatim" });
+
     const data = await response.json();
-    res.json(data);
+    if (!data || data.length === 0)
+      return res.status(404).json({ msg: "Location not found" });
+
+    const { lat, lon, display_name } = data[0];
+
+    // Return clean JSON to frontend
+    res.json({ lat, lon, display_name });
   } catch (err) {
     console.error("Nominatim API error:", err.message);
     res.status(500).json({ msg: "Nominatim API error" });
   }
 });
-
-/**
- * TODO: Add other proxy routes here
- * Example:
- * router.get("/weather", async (req, res) => { ... });
- */
 
 module.exports = router;
