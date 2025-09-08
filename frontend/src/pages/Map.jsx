@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Header from "../components/Header";
-import { Wind, Droplets, Sun, AlertTriangle } from "lucide-react";
+import {
+  Wind,
+  Droplets,
+  Sun,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import {
   MapContainer,
   TileLayer,
@@ -76,6 +83,21 @@ const LULC_NAMES = {
   l24: "Miscellaneous",
 };
 
+// Helper function to format soil values
+const formatSoilValue = (value, unit = "") => {
+  if (value === "N/A" || value === null || value === undefined) return "N/A";
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return "N/A";
+  return `${numValue.toFixed(1)}${unit}`;
+};
+
+// Helper function to get health color
+const getHealthColor = (healthIndex) => {
+  if (healthIndex >= 80) return "text-green-400";
+  if (healthIndex >= 60) return "text-yellow-400";
+  return "text-red-400";
+};
+
 const Map = () => {
   const { mapLocation, setMapLocation, zoom, fieldImage } = useMapContext();
   const navigate = useNavigate();
@@ -86,32 +108,166 @@ const Map = () => {
   const [soilData, setSoilData] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [warnings, setWarnings] = useState([]);
-  const [lulcData, setLulcData] = useState(null); // LULC state
+  const [lulcData, setLulcData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Enhanced warning generation
+  const generateWarnings = (weather, soil) => {
+    const newWarnings = [];
+
+    // Weather-based warnings
+    if (weather) {
+      if (weather.temperature > 35) {
+        newWarnings.push({
+          type: "danger",
+          icon: "🌡️",
+          message:
+            "High temperature detected! Increase irrigation frequency and consider shade nets.",
+        });
+      }
+      if (weather.temperature < 10) {
+        newWarnings.push({
+          type: "warning",
+          icon: "❄️",
+          message:
+            "Low temperature warning. Protect sensitive crops from frost damage.",
+        });
+      }
+      if (weather.humidity > 85) {
+        newWarnings.push({
+          type: "warning",
+          icon: "🌧️",
+          message:
+            "High humidity levels. Monitor crops for fungal diseases and improve ventilation.",
+        });
+      }
+      if (weather.wind_speed > 20) {
+        newWarnings.push({
+          type: "warning",
+          icon: "💨",
+          message:
+            "Strong wind conditions. Secure crops, structures, and check for wind damage.",
+        });
+      }
+    }
+
+    // Soil-based warnings
+    if (soil) {
+      // pH warnings
+      if (soil.pH !== "N/A" && soil.pH !== null) {
+        const pH = parseFloat(soil.pH) / 10; // SoilGrids pH format
+        if (pH < 5.5) {
+          newWarnings.push({
+            type: "danger",
+            icon: "🧪",
+            message: `Soil is too acidic (pH: ${pH.toFixed(
+              1
+            )}). Consider lime application to raise pH.`,
+          });
+        } else if (pH > 7.5) {
+          newWarnings.push({
+            type: "warning",
+            icon: "🧪",
+            message: `Soil is alkaline (pH: ${pH.toFixed(
+              1
+            )}). May affect nutrient availability.`,
+          });
+        }
+      }
+
+      // Organic carbon warning
+      if (soil.organic_carbon !== "N/A" && soil.organic_carbon !== null) {
+        const oc = parseFloat(soil.organic_carbon);
+        if (oc < 10) {
+          newWarnings.push({
+            type: "warning",
+            icon: "🌱",
+            message:
+              "Low soil organic matter detected. Consider adding compost or organic fertilizers.",
+          });
+        }
+      }
+
+      // Soil texture warnings
+      if (soil.clay !== "N/A" && parseFloat(soil.clay) > 600) {
+        newWarnings.push({
+          type: "info",
+          icon: "🏺",
+          message:
+            "Heavy clay soil detected. Ensure proper drainage and avoid overwatering.",
+        });
+      }
+
+      if (soil.sand !== "N/A" && parseFloat(soil.sand) > 700) {
+        newWarnings.push({
+          type: "info",
+          icon: "🏖️",
+          message:
+            "Sandy soil detected. Increase watering frequency and add organic matter.",
+        });
+      }
+
+      // Plant health warnings
+      if (soil.health_index !== null && soil.health_index < 70) {
+        newWarnings.push({
+          type: "warning",
+          icon: "🌿",
+          message: `Plant health index is low (${soil.health_index}/100). ${
+            soil.issues ? soil.issues.join(", ") : "Address soil conditions."
+          }`,
+        });
+      }
+
+      if (soil.pest_status === "High") {
+        newWarnings.push({
+          type: "danger",
+          icon: "🐛",
+          message:
+            "High pest/disease risk due to weather conditions. Monitor crops closely and consider preventive measures.",
+        });
+      }
+    }
+
+    // Success message when no warnings
+    if (newWarnings.length === 0) {
+      newWarnings.push({
+        type: "success",
+        icon: "✅",
+        message:
+          "Excellent! All environmental conditions are optimal for healthy crop growth.",
+      });
+    }
+
+    return newWarnings;
+  };
 
   // Fetch real-time soil, weather, and LULC data
   useEffect(() => {
     if (!currentLoc.lat || !currentLoc.lon) return;
 
     const fetchData = async () => {
+      setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/mapDetails/map-details?lat=${currentLoc.lat}&lon=${currentLoc.lon}&distcode=2301`
+          `http://localhost:5000/api/mapDetails/map-details?lat=${currentLoc.lat}&lon=${currentLoc.lon}`
         );
         if (!res.ok) throw new Error("Backend fetch failed");
 
         const data = await res.json();
 
-        // Weather
+        // Weather (UNCHANGED)
         if (data.weather) {
           setWeatherData({
             temperature: data.weather.temperature ?? "N/A",
             wind_speed: data.weather.wind_speed ?? "N/A",
             description: data.weather.description ?? "N/A",
             humidity: data.weather.humidity ?? "N/A",
+            pressure: data.weather.pressure ?? "N/A",
+            feels_like: data.weather.feels_like ?? "N/A",
           });
         }
 
-        // Soil
+        // Enhanced Soil Data
         if (data.soil) {
           setSoilData({
             nitrogen: data.soil.nitrogen ?? "N/A",
@@ -122,40 +278,36 @@ const Map = () => {
             clay: data.soil.clay ?? "N/A",
             sand: data.soil.sand ?? "N/A",
             silt: data.soil.silt ?? "N/A",
+            cec: data.soil.cec ?? "N/A",
             moisture: data.soil.moisture ?? null,
             temperature: data.soil.temperature ?? null,
             health_index: data.soil.health_index ?? null,
             pest_status: data.soil.pest_status ?? null,
             water_depth: data.soil.water_depth ?? null,
+            issues: data.soil.issues || [],
           });
         }
 
-        // Warnings
-        const newWarnings = [];
-        if (data.weather) {
-          if (data.weather.temperature > 35)
-            newWarnings.push("⚠️ High temperature, irrigate fields carefully.");
-          if (data.weather.humidity > 85)
-            newWarnings.push("🌧️ High humidity, monitor for fungal diseases.");
-          if (data.weather.wind_speed > 20)
-            newWarnings.push("💨 Strong winds, secure crops and structures.");
-        }
-        if (data.soil) {
-          if (data.soil.moisture < 30)
-            newWarnings.push("💧 Low soil moisture, consider watering.");
-          if (data.soil.pH < 5.5 || data.soil.pH > 7.5)
-            newWarnings.push(
-              "🌱 Soil pH is outside optimal range for most crops."
-            );
-        }
+        // Enhanced Warnings
+        const newWarnings = generateWarnings(data.weather, data.soil);
         setWarnings(newWarnings);
 
-        // LULC
+        // LULC Data
         if (data.lulc) {
           setLulcData(data.lulc);
         }
       } catch (err) {
         console.error("Error fetching map details:", err);
+        setWarnings([
+          {
+            type: "danger",
+            icon: "⚠️",
+            message:
+              "Failed to fetch real-time data. Please check your connection and try again.",
+          },
+        ]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -174,7 +326,7 @@ const Map = () => {
         <Header />
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
+          {/* Left Column - Map and Warnings (UNCHANGED MAP FUNCTIONALITY) */}
           <div className="lg:col-span-2 flex flex-col">
             <div className="relative h-[55vh] bg-white/5 rounded-2xl overflow-hidden shadow-lg border border-white/20 z-0">
               <MapContainer
@@ -228,42 +380,91 @@ const Map = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10"></div>
             </div>
 
-            {/* Farming Trends & Warnings */}
-            <div className="mt-4 flex-1 bg-white/10 backdrop-blur-md rounded-3xl p-4 shadow-lg border border-white/20 overflow-y-auto">
+            {/* Enhanced Farming Trends & Warnings */}
+            <div className="mt-4 flex-1 bg-white/10 backdrop-blur-md rounded-3xl p-4 shadow-lg border border-white/20 overflow-y-auto max-h-[300px]">
               <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-yellow-400" />
-                <span>Farming Trends & Warnings</span>
+                <span>Smart Farming Insights & Alerts</span>
               </h2>
 
-              <ul className="space-y-2 text-white/80 text-sm">
-                {warnings.length > 0 ? (
-                  warnings.map((warning, idx) => <li key={idx}>{warning}</li>)
-                ) : (
-                  <li>🌱 No immediate warnings. Conditions are normal.</li>
-                )}
-              </ul>
+              {loading ? (
+                <div className="text-white/60">Loading insights...</div>
+              ) : (
+                <div className="space-y-3">
+                  {warnings.map((warning, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-lg border-l-4 ${
+                        warning.type === "danger"
+                          ? "bg-red-500/10 border-red-400 text-red-200"
+                          : warning.type === "warning"
+                          ? "bg-yellow-500/10 border-yellow-400 text-yellow-200"
+                          : warning.type === "success"
+                          ? "bg-green-500/10 border-green-400 text-green-200"
+                          : "bg-blue-500/10 border-blue-400 text-blue-200"
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        <span className="text-lg">{warning.icon}</span>
+                        <span className="text-sm font-medium">
+                          {warning.message}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column */}
+          {/* Right Column - Enhanced Data Panels */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Soil Fertility */}
+            {/* Enhanced Soil Fertility */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/20">
               <h2 className="text-xl font-semibold text-white mb-4">
-                Soil Fertility
+                Soil Analysis
               </h2>
-              <p className="text-white/80 text-sm mb-2">
-                Nitrogen: {soilData ? soilData.nitrogen : "Loading..."}
-              </p>
-              <p className="text-white/80 text-sm mb-2">
-                Phosphorus: {soilData ? soilData.phosphorus : "Loading..."}
-              </p>
-              <p className="text-white/80 text-sm mb-2">
-                Potassium: {soilData ? soilData.potassium : "Loading..."}
-              </p>
+              {loading ? (
+                <div className="text-white/60">Loading soil data...</div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Nitrogen:</span>
+                    <span className="text-white font-medium">
+                      {formatSoilValue(soilData?.nitrogen, " ppm")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">pH Level:</span>
+                    <span className="text-white font-medium">
+                      {soilData?.pH !== "N/A"
+                        ? (parseFloat(soilData?.pH) / 10).toFixed(1)
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Organic Carbon:</span>
+                    <span className="text-white font-medium">
+                      {formatSoilValue(soilData?.organic_carbon, " g/kg")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Clay Content:</span>
+                    <span className="text-white font-medium">
+                      {formatSoilValue(soilData?.clay, "%")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Sand Content:</span>
+                    <span className="text-white font-medium">
+                      {formatSoilValue(soilData?.sand, "%")}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Weather */}
+            {/* Weather (UNCHANGED) */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/20">
               <h2 className="text-xl font-semibold text-white mb-4">Weather</h2>
               <div className="flex items-center space-x-2 mb-2">
@@ -292,40 +493,118 @@ const Map = () => {
               </div>
             </div>
 
-            {/* Plant Health */}
+            {/* Enhanced Plant Health */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/20">
               <h2 className="text-xl font-semibold text-white mb-4">
-                Plant Health
+                Plant Health Monitor
               </h2>
-              <p className="text-white/80 mb-2">
-                Health Index: {soilData ? soilData.health_index : "Loading..."}
-              </p>
-              <p className="text-white/80 mb-2">
-                Pest Status: {soilData ? soilData.pest_status : "Loading..."}
-              </p>
-              <p className="text-white/80 mb-2">
-                Water Depth: {soilData ? soilData.water_depth : "Loading..."}
-              </p>
+              {loading ? (
+                <div className="text-white/60">Analyzing plant health...</div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/80">Health Score:</span>
+                    <div className="flex items-center space-x-2">
+                      {soilData?.health_index !== null ? (
+                        <>
+                          <span
+                            className={`font-bold ${getHealthColor(
+                              soilData.health_index
+                            )}`}
+                          >
+                            {soilData.health_index}/100
+                          </span>
+                          {soilData.health_index >= 80 ? (
+                            <TrendingUp className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <TrendingDown className="w-4 h-4 text-red-400" />
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-white font-medium">
+                          Calculating...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Pest Risk:</span>
+                    <span
+                      className={`font-medium ${
+                        soilData?.pest_status === "High"
+                          ? "text-red-400"
+                          : soilData?.pest_status === "Medium"
+                          ? "text-yellow-400"
+                          : "text-green-400"
+                      }`}
+                    >
+                      {soilData?.pest_status || "Low"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Water Status:</span>
+                    <span className="text-white font-medium">
+                      {soilData?.water_depth || "Monitor closely"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/80">Soil Moisture:</span>
+                    <span className="text-white font-medium">
+                      {soilData?.moisture ? `${soilData.moisture}%` : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Bhuvan LULC */}
+            {/* Enhanced LULC */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/20 max-h-[300px] overflow-y-auto">
               <h2 className="text-xl font-semibold text-white mb-4">
-                LULC 50k Statistics
+                Land Use Analysis
               </h2>
-              {lulcData ? (
-                <ul className="text-white/80 text-sm space-y-1">
+              {loading ? (
+                <div className="text-white/60">Loading land use data...</div>
+              ) : lulcData ? (
+                <div className="space-y-2">
                   {Object.keys(lulcData)
-                    .filter((key) => key.startsWith("l"))
+                    .filter(
+                      (key) =>
+                        key.startsWith("l") && parseFloat(lulcData[key]) > 0
+                    )
+                    .sort(
+                      (a, b) =>
+                        parseFloat(lulcData[b]) - parseFloat(lulcData[a])
+                    )
+                    .slice(0, 6) // Show top 6 categories
                     .map((key) => (
-                      <li key={key}>
-                        {LULC_NAMES[key] || key}:{" "}
-                        {parseFloat(lulcData[key]).toFixed(2)}
-                      </li>
+                      <div
+                        key={key}
+                        className="flex justify-between items-center"
+                      >
+                        <span className="text-white/80 text-sm">
+                          {LULC_NAMES[key] || key}:
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-16 bg-white/20 rounded-full h-2">
+                            <div
+                              className="bg-green-400 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  parseFloat(lulcData[key]),
+                                  100
+                                )}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-white font-medium text-sm w-12">
+                            {parseFloat(lulcData[key]).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
                     ))}
-                </ul>
+                </div>
               ) : (
-                <p className="text-white/80">Loading LULC data...</p>
+                <p className="text-white/80">Unable to load land use data</p>
               )}
             </div>
           </div>
