@@ -17,18 +17,13 @@ const Signup = () => {
         body: JSON.stringify(form),
       });
 
-      let data;
-      try {
-        data = await res.json(); // try parsing JSON
-      } catch {
-        data = { message: "Server error" }; // fallback if response is not JSON
-      }
+      const data = await res.json();
 
       if (res.ok) {
         alert("Signup successful! Please login.");
-        window.location.href = "/"; // redirect to login
+        window.location.href = "/";
       } else {
-        alert(data.message || "Signup failed. Try again.");
+        alert(data.msg || data.error || "Signup failed. Try again.");
       }
     } catch (err) {
       console.error("Signup error:", err);

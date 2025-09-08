@@ -11,7 +11,7 @@ const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 // Helper function to validate phone number (simple regex for 10 digits)
 const isPhone = (value) => /^\d{10}$/.test(value);
 
-// Signup route
+// ================== SIGNUP ==================
 router.post("/signup", async (req, res) => {
   try {
     const { name, contact, password } = req.body;
@@ -20,21 +20,27 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ msg: "Please enter all fields" });
     }
 
-    // Validate contact
-    if (!isEmail(contact) && !isPhone(contact)) {
+    // Decide if contact is email or phone
+    let userData = { name, password: await bcrypt.hash(password, 10) };
+
+    if (isEmail(contact)) {
+      userData.email = contact;
+      // Check if email exists
+      if (await User.findOne({ email: contact })) {
+        return res.status(400).json({ msg: "Email already registered" });
+      }
+    } else if (isPhone(contact)) {
+      userData.phone = contact;
+      // Check if phone exists
+      if (await User.findOne({ phone: contact })) {
+        return res.status(400).json({ msg: "Phone already registered" });
+      }
+    } else {
       return res.status(400).json({ msg: "Enter a valid email or 10-digit phone number" });
     }
 
-    // Check if user already exists
-    let user = await User.findOne({ contact });
-    if (user) return res.status(400).json({ msg: "User already exists" });
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Save user
-    user = new User({ name, contact, password: hashedPassword });
+    const user = new User(userData);
     await user.save();
 
     res.json({ msg: "User registered successfully" });
@@ -44,7 +50,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// Login route
+// ================== LOGIN ==================
 router.post("/login", async (req, res) => {
   try {
     const { contact, password } = req.body;
@@ -53,8 +59,14 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ msg: "Please enter all fields" });
     }
 
-    // Find user by contact
-    const user = await User.findOne({ contact });
+    // Find user by email or phone
+    let user;
+    if (isEmail(contact)) {
+      user = await User.findOne({ email: contact });
+    } else if (isPhone(contact)) {
+      user = await User.findOne({ phone: contact });
+    }
+
     if (!user) {
       return res.status(400).json({ msg: "User not registered" });
     }
@@ -68,7 +80,10 @@ router.post("/login", async (req, res) => {
     // Sign token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    res.json({ token, user: { id: user._id, name: user.name, contact: user.contact } });
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
+    });
   } catch (err) {
     console.error("Login error:", err.message);
     res.status(500).json({ msg: "Server error" });
