@@ -41,8 +41,6 @@ const Header = () => {
         setMapLocation({ lat, lon });
 
         localStorage.setItem("selectedLocation", JSON.stringify({ lat, lon }));
-
-        navigate(`/Map?lat=${lat}&lon=${lon}`);
       } else {
         alert("Location not found");
       }

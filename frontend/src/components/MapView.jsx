@@ -11,7 +11,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMapContext } from "../context/MapContext";
-import { useNavigate } from "react-router-dom"; // <- import here
+import { useNavigate } from "react-router-dom";
 
 // Fix default Leaflet marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -33,13 +33,31 @@ const FitBoundsHelper = ({ bounds }) => {
   return null;
 };
 
+const RecenterWithFly = ({ lat, lon, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lon) {
+      map.flyTo([lat, lon], zoom, {
+        animate: true,
+        duration: 1.5,
+      });
+    }
+  }, [lat, lon, zoom, map]);
+  return null;
+};
+
 const MapView = () => {
   const { mapLocation, setMapLocation, zoom, fieldImage } = useMapContext();
-  const navigate = useNavigate(); // <- initialize here
+  const navigate = useNavigate();
   const mapRef = useRef(null);
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden h-[400px] md:h-[500px] lg:h-full">
+    <div
+      className="w-full rounded-2xl overflow-hidden h-[400px] md:h-[500px] lg:h-full cursor-pointer"
+      onClick={() =>
+        navigate(`/Map?lat=${mapLocation.lat}&lon=${mapLocation.lon}`)
+      } // ✅ only click redirect
+    >
       <MapContainer
         center={[mapLocation.lat, mapLocation.lon]}
         zoom={zoom}
@@ -72,6 +90,13 @@ const MapView = () => {
           </>
         )}
 
+        {/* ✅ Smooth fly on search/location change */}
+        <RecenterWithFly
+          lat={mapLocation.lat}
+          lon={mapLocation.lon}
+          zoom={zoom}
+        />
+
         {/* Draggable marker */}
         <Marker
           position={[mapLocation.lat, mapLocation.lon]}
@@ -80,7 +105,7 @@ const MapView = () => {
             dragend: (e) => {
               const { lat, lng } = e.target.getLatLng();
               setMapLocation({ lat, lon: lng });
-              navigate(`/Map?lat=${lat}&lon=${lng}`); // now works
+              // keep user on dashboard, no redirect
             },
           }}
         >

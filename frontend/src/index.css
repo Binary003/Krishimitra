@@ -21,3 +21,13 @@
   animation: slide-in 2s ease-out forwards; /* slower + smooth */
 }
 
+/* Make sure navbar overlays the map */
+.navbar-overlay {
+  position: relative;
+  z-index: 1001; /* higher than map */
+}
+
+/* Keep map below overlays */
+.leaflet-container {
+  z-index: 0 !important;
+}

@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");  // ⬅️ add this
 const connectDB = require("./config/db");
+const mapDetailsRoute = require("./routes/mapDetails");
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.get("/", (req, res) => {
 // Use Auth routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/proxy", require("./routes/proxy"));
+app.use("/api/mapDetails", require("./routes/mapDetails"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
