@@ -30,6 +30,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/proxy", require("./routes/proxy"));
 app.use("/api/mapDetails", require("./routes/mapDetails"));
+app.use("/api/mandi", require("./routes/mandiPrices"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
