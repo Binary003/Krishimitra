@@ -9,6 +9,7 @@ const API_CONFIG = {
     MAP_DETAILS: '/api/mapDetails/map-details', 
     CHATBOT_DISEASE: '/api/chatbot/detect-disease',
     MANDI_PRICES: '/api/mandi/prices',
+    MANDI_REFRESH: '/api/mandi/refresh',
     ML_PREDICT: '/api/ml/predict-disease',
     ML_HEALTH: '/api/ml/health'
   }

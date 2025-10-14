@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
+import { getApiUrl } from '../config/api';
 
 const MandiPricesPage = () => {
   // State management
@@ -19,7 +20,7 @@ const MandiPricesPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/mandi/prices");
+      const response = await fetch(getApiUrl("/api/mandi/prices"));
       const data = await response.json();
 
       if (data.success) {
@@ -80,7 +81,7 @@ const MandiPricesPage = () => {
   const handleRefresh = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/mandi/refresh", { method: "POST" });
+      const response = await fetch(getApiUrl("/api/mandi/refresh"), { method: "POST" });
       const data = await response.json();
       if (data.success) {
         await fetchMandiPrices();

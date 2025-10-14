@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
+import { getApiUrl } from '../config/api';
 
 const MandiPrices = () => {
   const { t, translateCrop } = useLanguage();
@@ -10,7 +11,7 @@ const MandiPrices = () => {
   const fetchMandiPrices = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/mandi/prices"); // your API endpoint
+      const response = await fetch(getApiUrl("/api/mandi/prices")); // your API endpoint
       const data = await response.json();
 
       if (data.success && data.data) {
