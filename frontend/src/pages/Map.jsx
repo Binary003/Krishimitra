@@ -250,7 +250,10 @@ const Map = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          getApiUrl('/api/mapDetails/map-details', `?lat=${currentLoc.lat}&lon=${currentLoc.lon}`)
+          getApiUrl(
+            "/api/mapDetails/map-details",
+            `?lat=${currentLoc.lat}&lon=${currentLoc.lon}`
+          )
         );
         if (!res.ok) throw new Error("Backend fetch failed");
 

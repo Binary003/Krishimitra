@@ -22,7 +22,10 @@ const WeatherWidget = () => {
     const fetchWeather = async () => {
       try {
         const res = await fetch(
-          getApiUrl('/api/mapDetails/map-details', `?lat=${mapLocation.lat}&lon=${mapLocation.lon}&distcode=2301`)
+          getApiUrl(
+            "/api/mapDetails/map-details",
+            `?lat=${mapLocation.lat}&lon=${mapLocation.lon}&distcode=2301`
+          )
         );
         if (!res.ok) throw new Error("Failed to fetch weather");
 
