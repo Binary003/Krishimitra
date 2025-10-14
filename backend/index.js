@@ -21,7 +21,8 @@ app.use(
       "http://localhost:5174", 
       "https://krishimitra-theta.vercel.app"
     ], // React frontend URLs
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
