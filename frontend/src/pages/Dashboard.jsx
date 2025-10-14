@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import WeatherWidget from "../components/WeatherWidget";
 import MandiPrices from "../components/MandiPrices";
-
 import MapView from "../components/MapView";
 import CultivatedArea from "../components/CultivatedArea";
 

@@ -185,8 +185,23 @@ router.get("/prices/:crop", async (req, res) => {
       priceCache.lastUpdated = Date.now();
     }
 
+    // Handle crop synonyms for better search results
+    const cropSynonyms = {
+      'rice': ['rice', 'paddy', 'dhan'],
+      'wheat': ['wheat', 'gehun'],
+      'corn': ['corn', 'maize', 'makka'],
+      'cotton': ['cotton', 'kapas'],
+      'gram': ['gram', 'chana', 'chickpea'],
+      'soybean': ['soybean', 'soya'],
+      'groundnut': ['groundnut', 'peanut', 'moongfali'],
+      'mustard': ['mustard', 'sarson'],
+      'tur': ['tur', 'arhar', 'red gram']
+    };
+
+    const searchTerms = cropSynonyms[crop.toLowerCase()] || [crop.toLowerCase()];
+    
     const cropPrices = allPrices.filter((item) =>
-      item.crop.toLowerCase().includes(crop.toLowerCase())
+      searchTerms.some(term => item.crop.toLowerCase().includes(term))
     );
 
     res.json({ success: true, data: cropPrices, count: cropPrices.length });

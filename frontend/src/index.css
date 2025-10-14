@@ -18,7 +18,7 @@
 }
 
 .animate-slide-in {
-  animation: slide-in 2s ease-out forwards; /* slower + smooth */
+  animation: slide-in 0.8s ease-out forwards;
 }
 
 /* Make sure navbar overlays the map */

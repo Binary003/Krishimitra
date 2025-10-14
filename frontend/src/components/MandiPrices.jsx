@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 const MandiPrices = () => {
+  const { t, translateCrop } = useLanguage();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,13 +14,14 @@ const MandiPrices = () => {
       const data = await response.json();
 
       if (data.success && data.data) {
-        const widgetData = data.data.slice(0, 10).map((item) => ({
-          id: item.mandi + item.crop,
-          name: item.crop,
+        const widgetData = data.data.slice(0, 10).map((item, index) => ({
+          id: `${item.mandi}-${item.crop}-${item.state}-${index}`,
+          name: translateCrop(item.crop), // Translate crop name
+          originalName: item.crop, // Keep original for reference
           price: `₹${item.minPrice.toLocaleString()} - ₹${item.maxPrice.toLocaleString()} / ${
             item.unit
           }`,
-          status: "Market Update",
+          status: t("marketUpdate"),
           time: item.lastUpdated
             ? new Date(item.lastUpdated).toLocaleTimeString("en-IN", {
                 hour: "2-digit",
@@ -50,9 +53,9 @@ const MandiPrices = () => {
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/20 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-semibold text-white">Mandi Prices</h3>
+        <h3 className="text-xl font-semibold text-white">{t("mandiPrices")}</h3>
         <span className="text-white/60 text-sm">
-          {loading ? "Updating..." : `${items.length} Items`}
+          {loading ? t("updating") : `${items.length} ${t("items")}`}
         </span>
       </div>
 
@@ -63,7 +66,7 @@ const MandiPrices = () => {
             <div
               key={item.id}
               className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 transform opacity-0 animate-slide-in"
-              style={{ animationDelay: `${index * 200}ms` }}
+              style={{ animationDelay: `${index * 150}ms` }}
             >
               <div className="flex items-start space-x-3">
                 <img
@@ -91,9 +94,11 @@ const MandiPrices = () => {
             </div>
           ))
         ) : loading ? (
-          <p className="text-white/60 text-center py-4">Loading prices...</p>
+          <p className="text-white/60 text-center py-4">{t("loadingPrices")}</p>
         ) : (
-          <p className="text-white/60 text-center py-4">No data available</p>
+          <p className="text-white/60 text-center py-4">
+            {t("noDataAvailable")}
+          </p>
         )}
       </div>
     </div>

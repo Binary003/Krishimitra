@@ -241,7 +241,7 @@ const MandiPricesPage = () => {
               {filteredPrices.length > 0 ? (
                 filteredPrices.map((item, index) => (
                   <tr
-                    key={index}
+                    key={`${item.crop}-${item.state}-${item.mandi}-${index}`}
                     className="hover:bg-green-100 transition duration-150"
                   >
                     <td className="px-4 py-2 font-medium">{item.crop}</td>

@@ -1,0 +1,52 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+venv/
+.env/
+.env.bak/
+.venv/
+ENV/
+env/
+
+# IDE configs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.ipynb
+
+# Model weights / checkpoints
+*.pth
+*.pt
+*.h5
+*.ckpt
+checkpoints/
+runs/
+logs/
+
+# Large datasets
+data/
+datasets/
+*.zip
+*.tar
+*.tar.gz
+
+# Training outputs
+outputs/
+*.csv
+*.tsv
+
+# Temporary files
+*.log
+*.tmp
+kaggle.json
