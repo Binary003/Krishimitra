@@ -33,6 +33,7 @@ app.use("/api/proxy", require("./routes/proxy"));
 app.use("/api/mapDetails", require("./routes/mapDetails"));
 app.use("/api/mandi", require("./routes/mandiPrices"));
 app.use("/api/chatbot", require("./routes/aiChatbot"));
+app.use("/api/ml", require("./routes/ml"));
 
 
 const PORT = process.env.PORT || 5000;
