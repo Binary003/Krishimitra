@@ -203,10 +203,34 @@ const ChatBot = () => {
       formData.append("image", imageFiles[0]); // Changed from "file" to "image"
 
       // Call backend instead of ML service directly to get treatment recommendations
-      const response = await fetch(getApiUrl("/api/ml/predict-disease"), {
+      let response = await fetch(getApiUrl("/api/ml/predict-disease"), {
         method: "POST",
         body: formData,
       });
+
+      // If service returns 500 (likely sleeping), try to wake it up
+      if (response.status === 500) {
+        addMessage({
+          sender: "bot",
+          text: "⏳ ML service is starting up, please wait...",
+          type: "info",
+        });
+
+        // Try wake-up call
+        try {
+          await fetch(getApiUrl("/api/ml/wake-up"), { method: "POST" });
+          // Wait a moment for service to wake up
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Retry the prediction
+          response = await fetch(getApiUrl("/api/ml/predict-disease"), {
+            method: "POST",
+            body: formData,
+          });
+        } catch (wakeError) {
+          console.log("Wake-up failed, continuing with original response");
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
@@ -287,9 +311,20 @@ const ChatBot = () => {
       }
     } catch (error) {
       console.error("Disease detection error:", error);
+      
+      let errorMessage = "❌ Analysis failed. ";
+      
+      if (error.message.includes("500")) {
+        errorMessage += "The ML service is starting up. Please try again in a moment, or check if your internet connection is stable.";
+      } else if (error.message.includes("Failed to fetch")) {
+        errorMessage += "Network error. Please check your internet connection and try again.";
+      } else {
+        errorMessage += `${error.message}. Please upload a clearer photo showing affected plant parts.`;
+      }
+      
       addMessage({
         sender: "bot",
-        text: `❌ Analysis failed: ${error.message}. Please upload a clearer photo showing affected plant parts.`,
+        text: errorMessage,
         type: "error",
       });
     } finally {
