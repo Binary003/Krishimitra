@@ -7,7 +7,10 @@ const router = express.Router();
 // Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { 
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+    files: 1 // Only allow 1 file
+  }
 });
 
 // ML Service URL - force production URL
@@ -19,10 +22,18 @@ console.log('🔧 ML Service configured:', ML_SERVICE_URL);
 router.post('/predict-disease', upload.single('image'), async (req, res) => {
   try {
     console.log('🔄 Contacting ML Service:', ML_SERVICE_URL);
+    console.log('📁 File received:', req.file ? 'Yes' : 'No');
     
     if (!req.file) {
+      console.log('❌ No file in request');
       return res.status(400).json({ error: 'No image file uploaded' });
     }
+    
+    console.log('📷 File details:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
     
     // Create form data to send to ML service
     const formData = new FormData();
@@ -40,7 +51,31 @@ router.post('/predict-disease', upload.single('image'), async (req, res) => {
     });
     
     console.log('✅ ML Service Response:', response.status);
-    res.json(response.data);
+    
+    // Transform ML service response to match frontend expectations
+    const mlResult = response.data;
+    const transformedResult = {
+      success: mlResult.success || true,
+      prediction: {
+        disease: mlResult.disease || mlResult.class,
+        confidence: mlResult.confidence || mlResult.probability,
+        confidence_str: mlResult.confidence_str || `${(mlResult.confidence * 100).toFixed(1)}%`,
+        is_healthy: mlResult.disease === 'healthy' || mlResult.class === 'healthy'
+      },
+      treatment: {
+        severity: mlResult.is_healthy ? 'None' : 'Medium',
+        chemical: mlResult.is_healthy ? 'No treatment needed' : 'Consult agricultural expert for specific treatment',
+        organic: mlResult.is_healthy ? 'Continue current care' : 'Natural remedies available - consult expert',
+        prevention: 'Maintain proper plant hygiene and monitor regularly'
+      },
+      message: mlResult.is_healthy ? 
+        'Your plant appears healthy! Keep up the good care.' : 
+        'Disease detected. Please consult an agricultural expert for treatment.',
+      top_predictions: mlResult.top3 || []
+    };
+    
+    console.log('📤 Transformed response for frontend');
+    res.json(transformedResult);
   } catch (error) {
     console.error('❌ ML Service Error:', {
       message: error.message,
@@ -94,6 +129,20 @@ router.get('/debug', (req, res) => {
   res.json({
     ML_SERVICE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+    multerConfigured: true
+  });
+});
+
+// Test file upload endpoint
+router.post('/test-upload', upload.single('image'), (req, res) => {
+  res.json({
+    fileReceived: !!req.file,
+    fileDetails: req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : null,
     timestamp: new Date().toISOString()
   });
 });
