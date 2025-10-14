@@ -2,8 +2,10 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-// ML Service URL - this should be set as an environment variable in production
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'https://krishimitra-ml-service.onrender.com';
+// ML Service URL - force production URL
+const ML_SERVICE_URL = 'https://krishimitra-ml-service.onrender.com';
+
+console.log('🔧 ML Service configured:', ML_SERVICE_URL);
 
 // Plant Disease Detection Route
 router.post('/predict-disease', async (req, res) => {
@@ -65,6 +67,15 @@ router.post('/wake-up', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+// Debug endpoint to check ML service URL
+router.get('/debug', (req, res) => {
+  res.json({
+    ML_SERVICE_URL,
+    NODE_ENV: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;
