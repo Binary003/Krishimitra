@@ -133,9 +133,10 @@ const ChatBot = () => {
   const geocodeLocation = async (placeName) => {
     try {
       const response = await fetch(
-        getApiUrl('/api/proxy/location', `?query=${encodeURIComponent(
-          placeName
-        )}`)
+        getApiUrl(
+          "/api/proxy/location",
+          `?query=${encodeURIComponent(placeName)}`
+        )
       );
 
       if (!response.ok) {
@@ -202,13 +203,10 @@ const ChatBot = () => {
       formData.append("image", imageFiles[0]); // Changed from "file" to "image"
 
       // Call backend instead of ML service directly to get treatment recommendations
-      const response = await fetch(
-        getApiUrl('/api/ml/predict-disease'),
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(getApiUrl("/api/ml/predict-disease"), {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
@@ -432,7 +430,10 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
+        getApiUrl(
+          "/api/mapDetails/map-details",
+          `?lat=${coords.lat}&lon=${coords.lon}`
+        )
       );
       const data = await response.json();
 
@@ -499,7 +500,7 @@ const ChatBot = () => {
 
     try {
       const response = await fetch(
-        getApiUrl('/api/mandi/prices', `/${cropName}`)
+        getApiUrl("/api/mandi/prices", `/${cropName}`)
       );
       const data = await response.json();
 
@@ -599,7 +600,10 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
+        getApiUrl(
+          "/api/mapDetails/map-details",
+          `?lat=${coords.lat}&lon=${coords.lon}`
+        )
       );
       const data = await response.json();
 
@@ -812,7 +816,10 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
+        getApiUrl(
+          "/api/mapDetails/map-details",
+          `?lat=${coords.lat}&lon=${coords.lon}`
+        )
       );
       const data = await response.json();
 
@@ -1039,7 +1046,7 @@ const ChatBot = () => {
       });
 
       try {
-        const response = await fetch(getApiUrl('/api/chatbot/chat'), {
+        const response = await fetch(getApiUrl("/api/chatbot/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message }),

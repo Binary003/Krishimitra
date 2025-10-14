@@ -41,7 +41,7 @@ const Header = () => {
       });
 
       const res = await fetch(
-        getApiUrl('/api/proxy/location', `?query=${translatedQuery}`)
+        getApiUrl("/api/proxy/location", `?query=${translatedQuery}`)
       );
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
