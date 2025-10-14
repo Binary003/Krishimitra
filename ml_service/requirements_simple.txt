@@ -1,0 +1,9 @@
+tensorflow-cpu
+numpy
+pandas
+scikit-learn
+flask
+flask-cors
+matplotlib
+requests
+kaggle
