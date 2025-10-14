@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMapContext } from "../context/MapContext";
 import { useLanguage } from "../context/LanguageContext";
+import { getApiUrl } from "../config/api";
 
 const Header = () => {
   const location = useLocation();
@@ -40,7 +41,7 @@ const Header = () => {
       });
 
       const res = await fetch(
-        `http://localhost:5000/api/proxy/location?query=${translatedQuery}`
+        getApiUrl('/api/proxy/location', `?query=${translatedQuery}`)
       );
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));

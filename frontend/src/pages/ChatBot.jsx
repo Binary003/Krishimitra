@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
+import { getApiUrl } from "../config/api";
 
 // Add custom styles for animations
 const customStyles = `
@@ -132,9 +133,9 @@ const ChatBot = () => {
   const geocodeLocation = async (placeName) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/proxy/location?query=${encodeURIComponent(
+        getApiUrl('/api/proxy/location', `?query=${encodeURIComponent(
           placeName
-        )}`
+        )}`)
       );
 
       if (!response.ok) {
@@ -202,7 +203,7 @@ const ChatBot = () => {
 
       // Call backend instead of ML service directly to get treatment recommendations
       const response = await fetch(
-        "http://localhost:5000/api/chatbot/detect-disease",
+        getApiUrl('/api/ml/predict-disease'),
         {
           method: "POST",
           body: formData,
@@ -431,7 +432,7 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        `http://localhost:5000/api/mapDetails/map-details?lat=${coords.lat}&lon=${coords.lon}`
+        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
       );
       const data = await response.json();
 
@@ -498,7 +499,7 @@ const ChatBot = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/mandi/prices/${cropName}`
+        getApiUrl('/api/mandi/prices', `/${cropName}`)
       );
       const data = await response.json();
 
@@ -598,7 +599,7 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        `http://localhost:5000/api/mapDetails/map-details?lat=${coords.lat}&lon=${coords.lon}`
+        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
       );
       const data = await response.json();
 
@@ -811,7 +812,7 @@ const ChatBot = () => {
 
       // Use the correct API endpoint (same as map page)
       const response = await fetch(
-        `http://localhost:5000/api/mapDetails/map-details?lat=${coords.lat}&lon=${coords.lon}`
+        getApiUrl('/api/mapDetails/map-details', `?lat=${coords.lat}&lon=${coords.lon}`)
       );
       const data = await response.json();
 
@@ -1038,7 +1039,7 @@ const ChatBot = () => {
       });
 
       try {
-        const response = await fetch("http://localhost:5000/api/chatbot/chat", {
+        const response = await fetch(getApiUrl('/api/chatbot/chat'), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message }),

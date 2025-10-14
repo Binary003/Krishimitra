@@ -16,7 +16,11 @@ app.use(express.json());
 // ✅ Allow frontend requests
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"], // React frontend URLs
+    origin: [
+      "http://localhost:5173", 
+      "http://localhost:5174", 
+      "https://krishimitra-theta.vercel.app"
+    ], // React frontend URLs
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
