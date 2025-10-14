@@ -1,6 +1,14 @@
 const express = require('express');
 const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
 const router = express.Router();
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
 
 // ML Service URL - force production URL
 const ML_SERVICE_URL = 'https://krishimitra-ml-service.onrender.com';
@@ -8,15 +16,27 @@ const ML_SERVICE_URL = 'https://krishimitra-ml-service.onrender.com';
 console.log('🔧 ML Service configured:', ML_SERVICE_URL);
 
 // Plant Disease Detection Route
-router.post('/predict-disease', async (req, res) => {
+router.post('/predict-disease', upload.single('image'), async (req, res) => {
   try {
     console.log('🔄 Contacting ML Service:', ML_SERVICE_URL);
     
-    const response = await axios.post(`${ML_SERVICE_URL}/predict`, req.body, {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded' });
+    }
+    
+    // Create form data to send to ML service
+    const formData = new FormData();
+    formData.append('image', req.file.buffer, {
+      filename: req.file.originalname || 'image.jpg',
+      contentType: req.file.mimetype || 'image/jpeg'
+    });
+    
+    const response = await axios.post(`${ML_SERVICE_URL}/predict`, formData, {
       headers: {
-        'Content-Type': 'application/json',
+        ...formData.getHeaders(),
       },
       timeout: 30000, // 30 second timeout
+      maxBodyLength: 50 * 1024 * 1024, // 50MB limit for images
     });
     
     console.log('✅ ML Service Response:', response.status);
