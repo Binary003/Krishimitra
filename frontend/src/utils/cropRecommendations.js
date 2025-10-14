@@ -1,4 +1,5 @@
 // Utility functions for crop recommendations
+import { getApiUrl } from '../config/api';
 
 // Crop images mapping
 export const cropImages = {
@@ -15,7 +16,7 @@ export const cropImages = {
 export const geocodeLocation = async (placeName) => {
   try {
     const response = await fetch(
-      `http://localhost:5000/api/proxy/location?query=${encodeURIComponent(placeName)}`
+      getApiUrl('/api/proxy/location', `?query=${encodeURIComponent(placeName)}`)
     );
     
     if (!response.ok) {
@@ -123,7 +124,7 @@ export const fetchCropRecommendations = async (lat, lon, locationName = "this lo
   
   try {
     const response = await fetch(
-      `http://localhost:5000/api/mapDetails/map-details?lat=${lat}&lon=${lon}`
+      getApiUrl('/api/mapDetails/map-details', `?lat=${lat}&lon=${lon}`)
     );
     
     if (!response.ok) {

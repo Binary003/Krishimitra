@@ -9,6 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useMapContext } from "../context/MapContext"; // ✅ import context
+import { getApiUrl } from "../config/api";
 
 const WeatherWidget = () => {
   const { mapLocation } = useMapContext(); // ✅ get current location
@@ -21,7 +22,7 @@ const WeatherWidget = () => {
     const fetchWeather = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/mapDetails/map-details?lat=${mapLocation.lat}&lon=${mapLocation.lon}&distcode=2301`
+          getApiUrl('/api/mapDetails/map-details', `?lat=${mapLocation.lat}&lon=${mapLocation.lon}&distcode=2301`)
         );
         if (!res.ok) throw new Error("Failed to fetch weather");
 

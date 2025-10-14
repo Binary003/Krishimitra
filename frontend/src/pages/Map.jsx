@@ -20,6 +20,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMapContext } from "../context/MapContext";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 
 // Fix default Leaflet marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -249,7 +250,7 @@ const Map = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/mapDetails/map-details?lat=${currentLoc.lat}&lon=${currentLoc.lon}`
+          getApiUrl('/api/mapDetails/map-details', `?lat=${currentLoc.lat}&lon=${currentLoc.lon}`)
         );
         if (!res.ok) throw new Error("Backend fetch failed");
 
