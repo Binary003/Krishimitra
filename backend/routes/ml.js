@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const multer = require('multer');
 const FormData = require('form-data');
+const { getTreatmentRecommendations } = require('../utils/treatmentDatabase');
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -54,23 +55,24 @@ router.post('/predict-disease', upload.single('image'), async (req, res) => {
     
     // Transform ML service response to match frontend expectations
     const mlResult = response.data;
+    const diseaseName = mlResult.disease || mlResult.class;
+    const isHealthy = diseaseName === 'healthy';
+    
+    // Get specific treatment recommendations from database
+    const treatment = getTreatmentRecommendations(diseaseName);
+    
     const transformedResult = {
       success: mlResult.success || true,
       prediction: {
-        disease: mlResult.disease || mlResult.class,
+        disease: diseaseName,
         confidence: mlResult.confidence || mlResult.probability,
-        confidence_str: mlResult.confidence_str || `${(mlResult.confidence * 100).toFixed(1)}%`,
-        is_healthy: mlResult.disease === 'healthy' || mlResult.class === 'healthy'
+        confidence_str: mlResult.confidence_str || `${((mlResult.confidence || mlResult.probability) * 100).toFixed(1)}%`,
+        is_healthy: isHealthy
       },
-      treatment: {
-        severity: mlResult.is_healthy ? 'None' : 'Medium',
-        chemical: mlResult.is_healthy ? 'No treatment needed' : 'Consult agricultural expert for specific treatment',
-        organic: mlResult.is_healthy ? 'Continue current care' : 'Natural remedies available - consult expert',
-        prevention: 'Maintain proper plant hygiene and monitor regularly'
-      },
-      message: mlResult.is_healthy ? 
+      treatment: treatment,
+      message: isHealthy ? 
         'Your plant appears healthy! Keep up the good care.' : 
-        'Disease detected. Please consult an agricultural expert for treatment.',
+        `${diseaseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} detected. Follow the treatment recommendations below.`,
       top_predictions: mlResult.top3 || []
     };
     
