@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"])  # allow only your frontend origin
 
 # === CONFIG ===
-MODELS_DIR = r"D:\SIH\Krishimitra\ml_service\models"
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 MODEL_FILENAME = "mobilenet_plant_disease.h5"
 CLASS_INDICES_FILENAME = "class_indices.npy"
 TARGET_SIZE = (224, 224)   # input size

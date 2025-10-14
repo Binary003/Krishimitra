@@ -29,6 +29,7 @@ Thumbs.db
 *.pth
 *.pt
 *.h5
+!models/mobilenet_plant_disease.h5
 *.ckpt
 checkpoints/
 runs/
