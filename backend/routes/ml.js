@@ -27,7 +27,10 @@ router.post('/predict-disease', upload.single('image'), async (req, res) => {
     
     if (!req.file) {
       console.log('❌ No file in request');
-      return res.status(400).json({ error: 'No image file uploaded' });
+      return res.status(400).json({ 
+        error: 'No image file uploaded',
+        success: false 
+      });
     }
     
     console.log('📷 File details:', {
@@ -82,13 +85,31 @@ router.post('/predict-disease', upload.single('image'), async (req, res) => {
     console.error('❌ ML Service Error:', {
       message: error.message,
       status: error.response?.status,
-      data: error.response?.data
+      data: error.response?.data,
+      url: ML_SERVICE_URL
     });
     
-    res.status(500).json({ 
-      error: 'ML Service unavailable',
+    // Determine appropriate status code and message
+    let statusCode = 500;
+    let errorMessage = 'ML Service unavailable';
+    
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      statusCode = 503;
+      errorMessage = 'ML Service is currently unavailable';
+    } else if (error.response?.status === 400) {
+      statusCode = 400;
+      errorMessage = 'Invalid image format or corrupted file';
+    } else if (error.response?.status === 404) {
+      statusCode = 404;
+      errorMessage = 'ML Service endpoint not found';
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
       message: error.message,
-      details: 'The ML service may be starting up. Please try again in a moment.'
+      details: 'The ML service may be starting up. Please try again in a moment.',
+      success: false,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -113,20 +134,38 @@ router.get('/health', async (req, res) => {
 router.post('/wake-up', async (req, res) => {
   try {
     console.log('🌅 Waking up ML service...');
-    const response = await axios.get(`${ML_SERVICE_URL}/ping`, { timeout: 45000 });
+    console.log('🔗 Ping URL:', `${ML_SERVICE_URL}/ping`);
+    
+    const response = await axios.get(`${ML_SERVICE_URL}/ping`, { 
+      timeout: 60000, // Increased timeout for wake-up
+      headers: {
+        'User-Agent': 'KrishiMitra-Backend/1.0'
+      }
+    });
+    
+    console.log('✅ ML Service wake-up successful:', response.status);
     res.json({ 
       status: 'ML Service awake',
-      message: 'ML service is now ready to receive requests'
+      message: 'ML service is now ready to receive requests',
+      success: true,
+      responseTime: new Date().toISOString()
     });
   } catch (error) {
+    console.error('❌ Wake-up failed:', {
+      message: error.message,
+      status: error.response?.status,
+      code: error.code
+    });
+    
     res.status(503).json({ 
       status: 'Wake-up failed',
-      error: error.message 
+      error: error.message,
+      success: false,
+      details: 'ML service may still be starting up. This can take 1-2 minutes on free tier.',
+      timestamp: new Date().toISOString()
     });
   }
-});
-
-// Debug endpoint to check ML service URL
+});// Debug endpoint to check ML service URL
 router.get('/debug', (req, res) => {
   res.json({
     ML_SERVICE_URL,

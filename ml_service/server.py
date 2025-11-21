@@ -10,7 +10,8 @@ import io
 import sys
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])  # allow only your frontend origin
+# Allow CORS for all origins since we're using it as a service
+CORS(app, origins="*")
 
 # === CONFIG ===
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
@@ -141,17 +142,28 @@ def health():
 
 @app.route("/predict", methods=["POST"])
 def predict_disease():
+    print("🔄 Prediction request received")
+    print(f"📋 Request files: {list(request.files.keys())}")
+    print(f"📋 Request form: {list(request.form.keys())}")
+    
     # Check for both 'file' and 'image' keys to handle different clients
     file = None
     if 'file' in request.files:
         file = request.files['file']
+        print("📁 Found file in 'file' key")
     elif 'image' in request.files:
         file = request.files['image']
+        print("📁 Found file in 'image' key")
     
     if not file:
+        print("❌ No file uploaded")
         return jsonify({'error': 'No file uploaded'}), 400
     if file.filename == '':
+        print("❌ No file selected")
         return jsonify({'error': 'No file selected'}), 400
+        
+    print(f"📷 Processing file: {file.filename}, size: {len(file.read())} bytes")
+    file.seek(0)  # Reset file pointer after reading size
 
     try:
         # Load and preprocess the image
@@ -188,8 +200,11 @@ def predict_disease():
         })
 
     except Exception as e:
-        print("Prediction error:", e, file=sys.stderr)
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Prediction error: {str(e)}", file=sys.stderr)
+        print(f"❌ Error type: {type(e).__name__}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'success': False}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5001))
