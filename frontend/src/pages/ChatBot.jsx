@@ -220,8 +220,8 @@ const ChatBot = () => {
         try {
           await fetch(getApiUrl("/api/ml/wake-up"), { method: "POST" });
           // Wait a moment for service to wake up
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
           // Retry the prediction
           response = await fetch(getApiUrl("/api/ml/predict-disease"), {
             method: "POST",
@@ -311,17 +311,19 @@ const ChatBot = () => {
       }
     } catch (error) {
       console.error("Disease detection error:", error);
-      
+
       let errorMessage = "❌ Analysis failed. ";
-      
+
       if (error.message.includes("500")) {
-        errorMessage += "The ML service is starting up. Please try again in a moment, or check if your internet connection is stable.";
+        errorMessage +=
+          "The ML service is starting up. Please try again in a moment, or check if your internet connection is stable.";
       } else if (error.message.includes("Failed to fetch")) {
-        errorMessage += "Network error. Please check your internet connection and try again.";
+        errorMessage +=
+          "Network error. Please check your internet connection and try again.";
       } else {
         errorMessage += `${error.message}. Please upload a clearer photo showing affected plant parts.`;
       }
-      
+
       addMessage({
         sender: "bot",
         text: errorMessage,

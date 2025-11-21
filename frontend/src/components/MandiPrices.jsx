@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
-import { getApiUrl } from '../config/api';
+import { getApiUrl } from "../config/api";
 
 const MandiPrices = () => {
   const { t, translateCrop } = useLanguage();
