@@ -90,6 +90,30 @@ const ChatBot = () => {
     }
   }, []);
 
+  // Proactive ML service wake-up to prevent sleeping
+  useEffect(() => {
+    const wakeUpMLService = async () => {
+      try {
+        console.log('🌅 Proactively waking up ML service...');
+        await fetch(getApiUrl("/api/ml/wake-up"), { 
+          method: "POST",
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
+        console.log('✅ ML service wake-up successful');
+      } catch (error) {
+        console.log('⚠️ Proactive wake-up failed (this is normal):', error.message);
+      }
+    };
+
+    // Wake up service immediately when component loads
+    wakeUpMLService();
+
+    // Set up periodic wake-up every 10 minutes to keep service active
+    const interval = setInterval(wakeUpMLService, 10 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const addMessage = (msg) => setMessages((prev) => [...prev, msg]);
 
   // Request location permission if not already granted
@@ -198,139 +222,224 @@ const ChatBot = () => {
       type: "info",
     });
 
-    try {
-      const formData = new FormData();
-      formData.append("image", imageFiles[0]); // Changed from "file" to "image"
+    // Enhanced ML service wake-up and retry logic
+    const MAX_RETRIES = 3;
+    const WAKE_UP_TIMEOUT = 90000; // 90 seconds
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const formData = new FormData();
+        formData.append("image", imageFiles[0]);
 
-      // Call backend instead of ML service directly to get treatment recommendations
-      let response = await fetch(getApiUrl("/api/ml/predict-disease"), {
-        method: "POST",
-        body: formData,
-      });
-
-      // If service returns 500 (likely sleeping), try to wake it up
-      if (response.status === 500) {
-        addMessage({
-          sender: "bot",
-          text: "⏳ ML service is starting up, please wait...",
-          type: "info",
-        });
-
-        // Try wake-up call
+        // Set timeout for each attempt
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         try {
-          await fetch(getApiUrl("/api/ml/wake-up"), { method: "POST" });
-          // Wait a moment for service to wake up
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-
-          // Retry the prediction
-          response = await fetch(getApiUrl("/api/ml/predict-disease"), {
+          // First attempt or after wake-up
+          let response = await fetch(getApiUrl("/api/ml/predict-disease"), {
             method: "POST",
             body: formData,
+            signal: controller.signal
           });
-        } catch (wakeError) {
-          console.log("Wake-up failed, continuing with original response");
+          
+          clearTimeout(timeoutId);
+
+          // Handle different error scenarios
+          if (response.status === 500 || response.status === 503) {
+            if (attempt === 1) {
+              // First failure - likely service is sleeping
+              addMessage({
+                sender: "bot",
+                text: `⏳ ML service is waking up... This may take up to 2 minutes on free hosting. Please be patient. (Attempt ${attempt}/${MAX_RETRIES})`,
+                type: "info",
+              });
+              
+              // Wake up the service
+              try {
+                addMessage({
+                  sender: "bot",
+                  text: "🌅 Sending wake-up signal to ML service...",
+                  type: "info",
+                });
+                
+                const wakeController = new AbortController();
+                const wakeTimeoutId = setTimeout(() => wakeController.abort(), WAKE_UP_TIMEOUT);
+                
+                const wakeResponse = await fetch(getApiUrl("/api/ml/wake-up"), { 
+                  method: "POST",
+                  signal: wakeController.signal
+                });
+                
+                clearTimeout(wakeTimeoutId);
+                
+                if (wakeResponse.ok) {
+                  const wakeResult = await wakeResponse.json();
+                  addMessage({
+                    sender: "bot",
+                    text: "✅ ML service is now awake! Retrying analysis...",
+                    type: "success",
+                  });
+                  
+                  // Wait for service to fully initialize
+                  await new Promise((resolve) => setTimeout(resolve, 8000));
+                  continue; // Retry the prediction
+                } else {
+                  throw new Error(`Wake-up failed with status ${wakeResponse.status}`);
+                }
+              } catch (wakeError) {
+                console.log('Wake-up call failed:', wakeError);
+                addMessage({
+                  sender: "bot",
+                  text: "⚠️ Wake-up signal failed, but will retry the analysis...",
+                  type: "warning",
+                });
+                await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait longer
+                continue;
+              }
+            } else {
+              // Subsequent failures
+              addMessage({
+                sender: "bot",
+                text: `⏳ Service is still starting... Retrying in 15 seconds. (Attempt ${attempt}/${MAX_RETRIES})`,
+                type: "info",
+              });
+              
+              if (attempt < MAX_RETRIES) {
+                await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait 15s between retries
+                continue;
+              }
+            }
+          }
+
+          // Check if we got a successful response
+          if (response.ok) {
+            const result = await response.json();
+            
+            if (result.success && result.prediction) {
+              // Success! Process the result normally
+              const { prediction, treatment, message } = result;
+
+              // Disease detection message
+              let diseaseMsg = `🦠 **Disease Detected**: ${prediction.disease}\n`;
+              diseaseMsg += `📊 **Confidence**: ${
+                prediction.confidence_str ||
+                (prediction.confidence * 100).toFixed(1) + "%"
+              }\n`;
+              diseaseMsg += `⚖️ **Severity**: ${treatment.severity || "Medium"}\n\n`;
+
+              if (prediction.is_healthy) {
+                diseaseMsg += `✅ **Good News!** Your plant appears healthy. Keep up the great care!`;
+              } else {
+                diseaseMsg += `${message || "Treatment recommended."}`;
+              }
+
+              addMessage({
+                sender: "bot",
+                text: diseaseMsg,
+                type: prediction.is_healthy ? "success" : "warning",
+              });
+
+              // Treatment recommendations (only for diseased plants)
+              if (!prediction.is_healthy && treatment) {
+                let treatmentMsg = `💊 **Treatment Recommendations**:\n\n`;
+
+                if (
+                  treatment.chemical &&
+                  treatment.chemical !== "No treatment needed"
+                ) {
+                  treatmentMsg += `🧪 **Chemical Treatment**:\n${treatment.chemical}\n\n`;
+                }
+
+                if (treatment.organic) {
+                  treatmentMsg += `🌿 **Organic Treatment**:\n${treatment.organic}\n\n`;
+                }
+
+                if (treatment.prevention) {
+                  treatmentMsg += `🛡️ **Prevention**:\n${treatment.prevention}\n\n`;
+                }
+
+                treatmentMsg += `⚠️ **Important**: Always read product labels and follow local agricultural guidelines.`;
+
+                addMessage({
+                  sender: "bot",
+                  text: treatmentMsg,
+                  type: "info",
+                });
+              }
+
+              // Show top predictions if available
+              if (
+                prediction.top_predictions &&
+                prediction.top_predictions.length > 1
+              ) {
+                let topPredMsg = `📋 **Other Possible Diseases**:\n`;
+                prediction.top_predictions.slice(1, 3).forEach((pred, idx) => {
+                  topPredMsg += `${idx + 2}. ${pred.label}: ${(
+                    pred.confidence * 100
+                  ).toFixed(1)}%\n`;
+                });
+                addMessage({
+                  sender: "bot",
+                  text: topPredMsg,
+                  type: "info",
+                });
+              }
+              
+              setIsAnalyzing(false);
+              return; // Success - exit the retry loop
+            } else {
+              throw new Error(result.error || "No disease detected");
+            }
+          } else {
+            throw new Error(`Server error: ${response.status}`);
+          }
+          
+        } catch (timeoutError) {
+          clearTimeout(timeoutId);
+          if (timeoutError.name === 'AbortError') {
+            console.log(`Attempt ${attempt} timed out`);
+            if (attempt < MAX_RETRIES) {
+              addMessage({
+                sender: "bot",
+                text: `⏰ Request timed out. Retrying... (${attempt}/${MAX_RETRIES})`,
+                type: "warning",
+              });
+              await new Promise((resolve) => setTimeout(resolve, 5000));
+              continue;
+            } else {
+              throw new Error('Request timed out after multiple attempts');
+            }
+          }
+          throw timeoutError;
         }
-      }
+        
+      } catch (error) {
+        console.error(`Attempt ${attempt} failed:`, error);
+        
+        if (attempt === MAX_RETRIES) {
+          // Final failure
+          let errorMessage = "❌ Analysis failed after multiple attempts. ";
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+          if (error.message.includes("500") || error.message.includes("503")) {
+            errorMessage += "The ML service is taking longer than usual to start. This can happen with free hosting services. Please try again in 2-3 minutes.";
+          } else if (error.message.includes("Failed to fetch") || error.message.includes("timed out")) {
+            errorMessage += "Network connection issues detected. Please check your internet connection and try again.";
+          } else {
+            errorMessage += `${error.message}. Please ensure you uploaded a clear photo of the affected plant parts.`;
+          }
 
-      const result = await response.json();
-
-      if (result.success && result.prediction) {
-        const { prediction, treatment, message } = result;
-
-        // Disease detection message
-        let diseaseMsg = `🦠 **Disease Detected**: ${prediction.disease}\n`;
-        diseaseMsg += `📊 **Confidence**: ${
-          prediction.confidence_str ||
-          (prediction.confidence * 100).toFixed(1) + "%"
-        }\n`;
-        diseaseMsg += `⚖️ **Severity**: ${treatment.severity || "Medium"}\n\n`;
-
-        if (prediction.is_healthy) {
-          diseaseMsg += `✅ **Good News!** Your plant appears healthy. Keep up the great care!`;
+          addMessage({
+            sender: "bot",
+            text: errorMessage,
+            type: "error",
+          });
+          break; // Exit the retry loop
         } else {
-          diseaseMsg += `${message || "Treatment recommended."}`;
+          // Not the final attempt, continue retrying
+          await new Promise((resolve) => setTimeout(resolve, 5000));
         }
-
-        addMessage({
-          sender: "bot",
-          text: diseaseMsg,
-          type: prediction.is_healthy ? "success" : "warning",
-        });
-
-        // Treatment recommendations (only for diseased plants)
-        if (!prediction.is_healthy && treatment) {
-          let treatmentMsg = `💊 **Treatment Recommendations**:\n\n`;
-
-          if (
-            treatment.chemical &&
-            treatment.chemical !== "No treatment needed"
-          ) {
-            treatmentMsg += `🧪 **Chemical Treatment**:\n${treatment.chemical}\n\n`;
-          }
-
-          if (treatment.organic) {
-            treatmentMsg += `🌿 **Organic Treatment**:\n${treatment.organic}\n\n`;
-          }
-
-          if (treatment.prevention) {
-            treatmentMsg += `🛡️ **Prevention**:\n${treatment.prevention}\n\n`;
-          }
-
-          treatmentMsg += `⚠️ **Important**: Always read product labels and follow local agricultural guidelines.`;
-
-          addMessage({
-            sender: "bot",
-            text: treatmentMsg,
-            type: "info",
-          });
-        }
-
-        // Show top predictions if available
-        if (
-          prediction.top_predictions &&
-          prediction.top_predictions.length > 1
-        ) {
-          let topPredMsg = `📋 **Other Possible Diseases**:\n`;
-          prediction.top_predictions.slice(1, 3).forEach((pred, idx) => {
-            topPredMsg += `${idx + 2}. ${pred.label}: ${(
-              pred.confidence * 100
-            ).toFixed(1)}%\n`;
-          });
-          addMessage({
-            sender: "bot",
-            text: topPredMsg,
-            type: "info",
-          });
-        }
-      } else {
-        throw new Error(result.error || "No disease detected");
       }
-    } catch (error) {
-      console.error("Disease detection error:", error);
-
-      let errorMessage = "❌ Analysis failed. ";
-
-      if (error.message.includes("500")) {
-        errorMessage +=
-          "The ML service is starting up. Please try again in a moment, or check if your internet connection is stable.";
-      } else if (error.message.includes("Failed to fetch")) {
-        errorMessage +=
-          "Network error. Please check your internet connection and try again.";
-      } else {
-        errorMessage += `${error.message}. Please upload a clearer photo showing affected plant parts.`;
-      }
-
-      addMessage({
-        sender: "bot",
-        text: errorMessage,
-        type: "error",
-      });
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
